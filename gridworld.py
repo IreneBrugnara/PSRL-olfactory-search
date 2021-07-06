@@ -57,6 +57,37 @@ class Gridworld():
         self.belief=np.multiply(self.belief, likelihood_matrix)
         self.belief/=np.sum(self.belief)     # normalize posterior
         
+    #update_efficient: much faster (but less readable) version of update(), that vectorizes the computation of the likelihood with Numpy
+        
+    def update_efficient(self, observation):
+        nrows, ncols=self.dimensions
+        x = np.tile(np.arange(self.state[0]).reshape(self.state[0],1), (1,ncols))
+        y = np.tile(np.arange(ncols), (self.state[0],1))
+        x = self.state[0] - x     # non inplace
+        y = self.state[1] - y
+        #x *= -1
+        #x += self.state[0]
+        #y *= -1
+        #y += self.state[1]
+        np.seterr(over='ignore')     # ignore overflow errors in the computation of p
+        p=1/(np.cosh(y/x/self.param))**2
+        np.seterr(over='warn')
+        if observation==0:
+            p=1-p    # non inplace
+            #p *= -1
+            #p += 1
+        
+        if observation==0:
+            lkh=np.ones((nrows,ncols))
+        else:
+            lkh=np.zeros((nrows,ncols))
+        lkh[:self.state[0]] = p
+        lkh[self.state] = 0
+        
+        self.belief = self.belief * lkh
+        self.belief/=np.sum(self.belief)
+
+        
 
     #step: apply action and transition to the new state
 
@@ -71,7 +102,7 @@ class Gridworld():
     #greedy: greedy choice for the next estimated target position
 
     def thompson(self):
-        index=np.random.choice(range(self.dimensions[0]*self.dimensions[1]), p=self.belief.flatten())
+        index=np.random.choice(range(self.dimensions[0]*self.dimensions[1]), p=self.belief.ravel())
         self.estimated_target = np.unravel_index(index, self.dimensions)
     def greedy(self):
         index=np.argmax(self.belief)
@@ -138,7 +169,7 @@ def gridworld_search(grid, tau, greedy=False):
             action=grid.policy()
             grid.step(action)
             obs=grid.observe()
-            grid.update(obs)
+            grid.update_efficient(obs)
             t+=1
             i+=1
             reached_est_target = grid.state == grid.estimated_target
