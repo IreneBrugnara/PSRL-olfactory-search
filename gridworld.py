@@ -23,24 +23,40 @@ class Gridworld():
           self.scat_me = self.ax.scatter(self.state[1], self.state[0], color='y', marker='o', s=16, zorder=0.1, label="visited positions")
           self.scat_mel = self.ax.scatter(self.state[1], self.state[0], color='orange', marker='o', label="current position", zorder=1, s=150)
           self.scat_target = self.ax.scatter(self.estimated_target[1], self.estimated_target[0], color='b', marker='x', label="estimated target", s=150)
+          self.scat_obs = self.ax.scatter(None, None, color='purple', marker='o', label="observations", s=16, zorder=0.2)
           self.fig.colorbar(self.im, ax=self.ax, ticks=None)
+          self.text = self.fig.text(0.4, 0.6, "")
           plt.show(block=False)
 
     #show: display a graphical representation of the grid
 
-    def show(self, t):
+    def show(self, t, obs):
         self.im.autoscale()
         self.im.set_array(self.belief)
         self.scat_me.set_offsets(np.vstack([self.scat_me.get_offsets(), np.array([self.state[1],self.state[0]])]))
         self.scat_mel.set_offsets([self.state[1], self.state[0]])
         self.scat_target.set_offsets([self.estimated_target[1], self.estimated_target[0]])
+        if obs:
+            self.scat_obs.set_offsets(np.vstack([self.scat_obs.get_offsets(), np.array([self.state[1],self.state[0]])]))
+            
         self.ax.set_title("t="+str(t))
-        self.fig.canvas.draw()
         if t==0:
             self.ax.legend(bbox_to_anchor=(-0.2, 0.5))
-        #plt.pause(0.01)     # comment this to have fastest animation
+        self.text.set_text("y=1" if obs else "")
         
-
+        self.fig.canvas.draw()
+        plt.pause(0.01)     # comment this to have fastest animation
+        
+    #field: display the model of observations
+        
+    def field(self):
+        field=np.empty_like(self.belief)
+        nrows, ncols=self.dimensions
+        for pos in product(range(nrows), range(ncols)):    # loop over each state in the grid
+            field[pos] = self.bernoulli_param(pos, self.real_target)
+        plt.imshow(field)
+        plt.colorbar()
+        plt.show()
 
     #update: posterior calculation given an observation
 
@@ -156,6 +172,7 @@ class Gridworld():
 
 def gridworld_search(grid, tau, greedy=False):
     t=0
+    obs=0
     while not grid.done:
         if greedy:
             grid.greedy()
@@ -165,7 +182,7 @@ def gridworld_search(grid, tau, greedy=False):
         reached_est_target=False
         while not reached_est_target and i < tau and not grid.done:
             if grid.render:
-                grid.show(t)
+                grid.show(t, obs)
             action=grid.policy()
             grid.step(action)
             obs=grid.observe()
@@ -174,5 +191,5 @@ def gridworld_search(grid, tau, greedy=False):
             i+=1
             reached_est_target = grid.state == grid.estimated_target
     if grid.render:
-        grid.show(t)
+        grid.show(t, obs)
     return t
