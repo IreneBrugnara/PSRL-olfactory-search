@@ -20,10 +20,10 @@ class Gridworld():
           self.ax = self.fig.add_subplot(111)
           self.im = self.ax.imshow(self.belief, cmap='Greens')
           self.scat_real_target = self.ax.scatter(self.real_target[1], self.real_target[0], color='r', marker='*', label="real target", s=150)
-          self.scat_me = self.ax.scatter(self.state[1], self.state[0], color='y', marker='o', s=16, zorder=0.1, label="visited positions")
-          self.scat_mel = self.ax.scatter(self.state[1], self.state[0], color='orange', marker='o', label="current position", zorder=1, s=150)
+          self.scat_me = self.ax.scatter(self.state[1], self.state[0], color='y', marker='o', s=5, zorder=0.1, label="visited positions")
+          self.scat_mel = self.ax.scatter(self.state[1], self.state[0], color='orange', marker='o', label="current position", zorder=1, s=100)
           self.scat_target = self.ax.scatter(self.estimated_target[1], self.estimated_target[0], color='b', marker='x', label="estimated target", s=150)
-          self.scat_obs = self.ax.scatter(None, None, color='purple', marker='o', label="observations", s=16, zorder=0.2)
+          self.scat_obs = self.ax.scatter(None, None, color='purple', marker='o', label="observations", s=5, zorder=0.2)
           self.fig.colorbar(self.im, ax=self.ax, ticks=None)
           self.text = self.fig.text(0.4, 0.6, "")
           plt.show(block=False)
@@ -45,7 +45,7 @@ class Gridworld():
         self.text.set_text("y=1" if obs else "")
         
         self.fig.canvas.draw()
-        plt.pause(0.01)     # comment this to have fastest animation
+        #plt.pause(0.1)     # comment this to have fastest animation
         
     #field: display the model of observations
         
@@ -121,7 +121,10 @@ class Gridworld():
         index=np.random.choice(self.dimensions[0]*self.dimensions[1], p=self.belief.ravel())
         self.estimated_target = np.unravel_index(index, self.dimensions)
     def greedy(self):
-        index=np.argmax(self.belief)
+        if np.all(self.belief==self.belief[0,0]): # at the first step the belief is flat so I choose randomly (otherwise np.argmax would pick always the first element and this introduces a bias)
+            index=np.random.randint(self.dimensions[0]*self.dimensions[1])
+        else:
+            index=np.argmax(self.belief)
         self.estimated_target = np.unravel_index(index, self.dimensions)
 
     #policy: pick action to get one step closer to the current estimate of the target
