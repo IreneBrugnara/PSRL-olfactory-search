@@ -118,7 +118,7 @@ class Gridworld():
     #greedy: greedy choice for the next estimated target position
 
     def thompson(self):
-        index=np.random.choice(range(self.dimensions[0]*self.dimensions[1]), p=self.belief.ravel())
+        index=np.random.choice(self.dimensions[0]*self.dimensions[1], p=self.belief.ravel())
         self.estimated_target = np.unravel_index(index, self.dimensions)
     def greedy(self):
         index=np.argmax(self.belief)
