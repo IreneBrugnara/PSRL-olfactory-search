@@ -5,7 +5,7 @@ from math import cosh
 
 
 class Gridworld():
-    def __init__(self, nrows, ncols, real_target, init_state, render=True, param=0.2):
+    def __init__(self, nrows, ncols, real_target, init_state, render=True, pause=0, param=0.2):
         self.dimensions=(nrows,ncols)    # dimensions of the grid
         self.state=init_state    # current state
         self.belief=np.ones(self.dimensions)/(nrows*ncols)    # uniform prior
@@ -14,6 +14,7 @@ class Gridworld():
         self.real_target=real_target    # real target position
         self.estimated_target=(None,None)     # current estimate of target position
         self.render=render    # if true, a graphical representation of the gridworld is printed
+        self.pause=pause    # time interval between animation frames
 
         if self.render:
           self.fig = plt.figure(figsize=(16, 10))
@@ -45,7 +46,8 @@ class Gridworld():
         self.text.set_text("y=1" if obs else "")
         
         self.fig.canvas.draw()
-        #plt.pause(0.1)     # comment this to have fastest animation
+        if self.pause!=0:     # pause=0 is the fastest animation
+            plt.pause(self.pause)
         
     #field: display the model of observations
         
@@ -121,11 +123,10 @@ class Gridworld():
         index=np.random.choice(self.dimensions[0]*self.dimensions[1], p=self.belief.ravel())
         self.estimated_target = np.unravel_index(index, self.dimensions)
     def greedy(self):
-        if np.all(self.belief==self.belief[0,0]): # at the first step the belief is flat so I choose randomly (otherwise np.argmax would pick always the first element and this introduces a bias)
-            index=np.random.randint(self.dimensions[0]*self.dimensions[1])
-        else:
-            index=np.argmax(self.belief)
+        index=np.random.choice(np.flatnonzero(self.belief == self.belief.max()))  # in case of tie (the belief has multiple maxima) I choose randomly (otherwise "index=np.argmax(self.belief)" would pick always the first element and this introduces a bias)
         self.estimated_target = np.unravel_index(index, self.dimensions)
+        #if np.count_nonzero(self.belief == self.belief.max())>1:
+        #    print("tie", np.count_nonzero(self.belief == self.belief.max()))
 
     #policy: pick action to get one step closer to the current estimate of the target
 
@@ -173,9 +174,13 @@ class Gridworld():
 
 #gridworld_search: simulates Thompson or greedy algorithm and returns the number of steps t taken until target is reached
 
-def gridworld_search(grid, tau, greedy=False):
-    t=0
+def gridworld_search(grid, tau, greedy=False, maxiter=np.inf, wait_first_obs=True):
     obs=0
+    if wait_first_obs:
+        while obs==0:
+            obs=grid.observe()
+        grid.update_efficient(obs)
+    t=0
     while not grid.done:
         if greedy:
             grid.greedy()
@@ -192,6 +197,8 @@ def gridworld_search(grid, tau, greedy=False):
             grid.update_efficient(obs)
             t+=1
             i+=1
+            if t>maxiter:
+               return t
             reached_est_target = grid.state == grid.estimated_target
     if grid.render:
         grid.show(t, obs)
