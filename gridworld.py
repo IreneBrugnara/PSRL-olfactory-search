@@ -76,36 +76,58 @@ class Gridworld():
         self.belief/=np.sum(self.belief)     # normalize posterior
         
     #update_efficient: much faster (but less readable) version of update(), that vectorizes the computation of the likelihood with Numpy
-        
+    
     def update_efficient(self, observation):
-        nrows, ncols=self.dimensions
-        x = np.tile(np.arange(self.state[0]).reshape(self.state[0],1), (1,ncols))
-        y = np.tile(np.arange(ncols), (self.state[0],1))
-        x = self.state[0] - x     # non inplace
-        y = self.state[1] - y
-        #x *= -1
-        #x += self.state[0]
-        #y *= -1
-        #y += self.state[1]
-        np.seterr(over='ignore')     # ignore overflow errors in the computation of p
-        p=1/(np.cosh(y/x/self.param))**2
-        np.seterr(over='warn')
-        if observation==0:
-            p=1-p    # non inplace
-            #p *= -1
-            #p += 1
-        
-        if observation==0:
-            lkh=np.ones((nrows,ncols))
-        else:
-            lkh=np.zeros((nrows,ncols))
-        lkh[:self.state[0]] = p
-        lkh[self.state] = 0
-        
-        self.belief = self.belief * lkh
+        self.belief = self.belief * self.likelihood_vectorial(observation, self.state)
         self.belief/=np.sum(self.belief)
+    
+    
+    #bernoulli_param: compute the parameter of the Bernoulli for the model of observations
+            
+    def bernoulli_param(self, state, source):
+        x=state[0]-source[0]
+        y=state[1]-source[1]
+        if x<=0:
+            p=0   # no observations can be made behind the source
+        else:
+            if abs(y/x/self.param) < 350:    # to prevent overflow
+                p=1/(cosh(y/x/self.param))**2
+            else:
+                p=0
+        return p
+
+    
+    def bernoulli_param_vectorial(self, state):
+        nrows, ncols=self.dimensions
+        x = np.tile(np.arange(state[0]).reshape(state[0],1), (1,ncols))
+        y = np.tile(np.arange(ncols), (state[0],1))
+        x = state[0] - x
+        y = state[1] - y
+        np.seterr(over='ignore')     # ignore overflow errors in the computation of p
+        prob_nonzero=1/(np.cosh(y/x/self.param))**2
+        np.seterr(over='warn')
+        prob=np.zeros(self.dimensions)
+        prob[:state[0]] = prob_nonzero
+        return prob
+        
+    #likelihood: compute the likelihood of a given observation y assuming that the target is est_target
+
+    def likelihood(self, y, est_target):
+        p=self.bernoulli_param(self.state, est_target)
+        if self.state==est_target:     # this is because the source is a terminal state, so 
+            return 0                   # the state just visited was not certainly the source regardless of y
+        return p if y==1 else 1-p
 
         
+    def likelihood_vectorial(self, obs, state):
+        p = self.bernoulli_param_vectorial(state)
+        if obs==1:
+            lkh = p
+        else:
+            lkh = 1 - p
+        lkh[state] = 0
+        return lkh
+    
 
     #step: apply action and transition to the new state
 
@@ -122,11 +144,13 @@ class Gridworld():
     def thompson(self):
         index=np.random.choice(self.dimensions[0]*self.dimensions[1], p=self.belief.ravel())
         self.estimated_target = np.unravel_index(index, self.dimensions)
+        
     def greedy(self):
         index=np.random.choice(np.flatnonzero(self.belief == self.belief.max()))  # in case of tie (the belief has multiple maxima) I choose randomly (otherwise "index=np.argmax(self.belief)" would pick always the first element and this introduces a bias)
         self.estimated_target = np.unravel_index(index, self.dimensions)
         #if np.count_nonzero(self.belief == self.belief.max())>1:
-        #    print("tie", np.count_nonzero(self.belief == self.belief.max()))
+        #    print("tie", np.count_nonzero(self.belief == self.belief.max()))       
+        
 
     #policy: pick action to get one step closer to the current estimate of the target
 
@@ -142,27 +166,6 @@ class Gridworld():
         else:
             return (0, action_c)
             
-    #bernoulli_param: compute the parameter of the Bernoulli for the model of observations
-            
-    def bernoulli_param(self, state, source):
-        x=state[0]-source[0]
-        y=state[1]-source[1]
-        if x<=0:
-            p=0   # no observations can be made behind the source
-        else:
-            if abs(y/x/self.param) < 350:    # to prevent overflow
-                p=1/(cosh(y/x/self.param))**2
-            else:
-                p=0
-        return p
-
-    #likelihood: compute the likelihood of a given observation y assuming that the target is est_target
-
-    def likelihood(self, y, est_target):
-        p=self.bernoulli_param(self.state, est_target)
-        if self.state==est_target:     # this is because the source is a terminal state, so 
-            return 0                   # the state just visited was not certainly the source regardless of y
-        return p if y==1 else 1-p
 
     #observe: draw a real (random) observation from the environment
 
@@ -179,7 +182,7 @@ def gridworld_search(grid, tau, greedy=False, maxiter=np.inf, wait_first_obs=Tru
     if wait_first_obs:
         while obs==0:
             obs=grid.observe()
-        grid.update_efficient(obs)
+        grid.update_efficient(obs)    # INDENT
     t=0
     while not grid.done:
         if greedy:
