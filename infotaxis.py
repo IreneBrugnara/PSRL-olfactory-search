@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product
 from math import cosh
-from scipy.stats import entropy as scipy_entropy
-
 
 class Gridworld():
     def __init__(self, nrows, ncols, source, init_state, render=True, pause=0, param=0.2):
@@ -21,7 +19,7 @@ class Gridworld():
           self.fig = plt.figure(figsize=(16, 10))
           self.ax = self.fig.add_subplot(111)
           self.im = self.ax.imshow(self.belief, cmap='Greens')
-          self.scat_source = self.ax.scatter(self.source[1], self.source[0], color='r', marker='*', label="real target", s=150)
+          self.scat_source = self.ax.scatter(self.source[1], self.source[0], color='r', marker='*', label="source", s=150)
           self.scat_me = self.ax.scatter(self.state[1], self.state[0], color='y', marker='o', s=5, zorder=0.1, label="visited positions")
           self.scat_mel = self.ax.scatter(self.state[1], self.state[0], color='orange', marker='o', label="current position", zorder=1, s=100)
           self.scat_obs = self.ax.scatter(None, None, color='purple', marker='o', label="observations", s=5, zorder=0.2)
@@ -60,9 +58,6 @@ class Gridworld():
         plt.show()
         
     
-    
-    #bernoulli_param: compute the parameter of the Bernoulli for the model of observations
-
     
     def bernoulli_param_vectorial(self, state):
         nrows, ncols=self.dimensions
@@ -108,17 +103,14 @@ class Gridworld():
             p = self.bernoulli_param_vectorial(s)
             # p[new_state] = 0 ??????
             mean_p = np.sum(self.belief * p)   # mean bernoulli parameter weighted with the current belief
-
-            
-            for y in [0,1]:
+            for y in [0,1]:  # loop over the possible outcomes
                 lkh = p if y==1 else 1-p   # likelihood
                 lkh[s] = 0
                 posterior = self.belief * lkh    # posterior calculation with bayesian update
                 posterior /= np.sum(posterior)   # marginalize
                 
                 new_belief[s][y] = posterior
-                new_entropy[s][y] = - np.nansum(posterior * np.log(posterior))
-                # il nansum serve perchè dove il posterior è troppo piccolo il risultato della moltiplicazione è nan
+                new_entropy[s][y] = - np.sum(posterior[posterior>0] * np.log(posterior[posterior>0]))
                 # oppure usare scipy.stats.entropy applicato a posterior.flatten()
             # controllare che l'entropia sia sempre positiva!
             greedy_term = self.belief[s]*(-self.entropy)
@@ -127,9 +119,12 @@ class Gridworld():
             # non mi piace che [s] viene usato in due modi diversi.... confonde le idee a leggerlo
             delta_S[s] = greedy_term + exploration_term    # formula (1) del paper
             # expected entropy variation
-            
+
         # pick the move that maximizes the expected reduction in entropy
-        self.state = min(delta_S, key=delta_S.get)
+        #self.state = min(delta_S, key=delta_S.get)
+        best_states = [s for s in new_states if abs(delta_S[s]-min(delta_S.values()))<1e-14]    # delta_S[s]==min(delta_S.values()) is not correct because of numerical floating-point errors
+        
+        self.state = best_states[np.random.choice(len(best_states))]   # randomize in case of ties
         self.done = (self.state==self.source)
         actual_obs=0   # solo per il plot
         if not self.done:
@@ -168,31 +163,44 @@ class Gridworld():
                 p=0
         return p
         
+    def update_efficient(self, observation):  # serve solo se wait_first_obs=True
+        self.belief = self.belief * self.likelihood_vectorial(observation, self.state)
+        self.belief/=np.sum(self.belief)
+        
+    def likelihood_vectorial(self, obs, state):  # serve solo se wait_first_obs=True
+        p = self.bernoulli_param_vectorial(state)
+        if obs==1:
+            lkh = p
+        else:
+            lkh = 1 - p
+        lkh[state] = 0
+        return lkh
 
 
 #gridworld_search: simulates Infotaxis and returns the number of steps t taken until target is reached
 
 def gridworld_search(grid, maxiter=np.inf, wait_first_obs=True):
-    #if wait_first_obs:
-    #    while obs==0:
-    #        obs=grid.observe()
-    #    grid.update_efficient(obs)    # INDENT
+    if wait_first_obs:
+        obs=0
+        while obs==0:
+            obs=grid.observe()
+        grid.update_efficient(obs)    # INDENT
     t=0
     if grid.render:
          grid.show(t, 0)
     while not grid.done and t<=maxiter:
-        print(t)
-        grid.infotaxis(t)
-        t+=1
+       grid.infotaxis(t)
+       t+=1
     return t
     
     
-nrows=200
-ncols=200
-myseed=311
-np.random.seed(myseed)  
-init_state = 130,100
+nrows=201
+ncols=201
+myseed=2
+np.random.seed(myseed) 
+#np.random.seed() 
+init_state = 140,100
 source = 20,60
-grid=Gridworld(nrows, ncols, source, init_state, render=True, pause=0)
+grid=Gridworld(nrows, ncols, source, init_state, render=False, pause=0)
 print(gridworld_search(grid, wait_first_obs=True))
 
