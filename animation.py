@@ -1,12 +1,14 @@
 from gridworld import *
 import time
 
-nrows=200
-ncols=100
-myseed=3  
+nrows=201
+ncols=201
+myseed=712
 np.random.seed(myseed)  
 print(myseed)
-init_state = 150,30
-real_target = 20,60
-grid=Gridworld(nrows, ncols, real_target, init_state, render=True)
-print(gridworld_search(grid, 10, greedy=False))
+init_state = 150,100
+real_target = 25,60
+grid=Thompson(nrows, ncols, real_target, init_state, render=True, pause=2)
+print(gridworld_search(grid, 1, greedy=False, wait_first_obs=False))
+
+
