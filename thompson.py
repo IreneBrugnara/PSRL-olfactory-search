@@ -20,50 +20,17 @@ class Thompson(Gridworld):
         self.scat_target.set_offsets([self.estimated_target[1], self.estimated_target[0]])
         
 
-        
-
-
-    #advance: apply action and transition to the new state
-
-    def advance(self, action):
-        self.state = self.move(action)
-        self.done = (self.state==self.source)
-
     #thompson: thompson sampling to choose a new estimate for the target position
-    #greedy: greedy choice for the next estimated target position
 
     def thompson(self):
         index=np.random.choice(self.dimensions[0]*self.dimensions[1], p=self.belief.ravel())
         self.estimated_target = np.unravel_index(index, self.dimensions)
-        
-    def greedy(self):
-        index=np.random.choice(np.flatnonzero(self.belief == self.belief.max()))  # in case of tie (the belief has multiple maxima) I choose randomly (otherwise "index=np.argmax(self.belief)" would pick always the first element and this introduces a bias)
-        self.estimated_target = np.unravel_index(index, self.dimensions)
-        #if np.count_nonzero(self.belief == self.belief.max())>1:
-        #    print("tie", np.count_nonzero(self.belief == self.belief.max()))       
-        
-         
-
-    #policy: pick action to get one step closer to the current estimate of the target
-
-    def policy(self):
-        var_r=self.estimated_target[0]-self.state[0]
-        var_c=self.estimated_target[1]-self.state[1]
-        action_r=np.sign(var_r) # direction of movement along horizontal axis
-        action_c=np.sign(var_c) # direction of movement along vertical axis
-        if action_r==0 or action_c==0: # stay still on at least one axis
-            return (action_r, action_c)
-        elif np.random.uniform()>0.5: # if two actions are equivalent, choose randomly
-            return (action_r, 0)
-        else:
-            return (0, action_c)
-            
 
 
 
 #gridworld_search: simulates Thompson or greedy algorithm and returns the number of steps t taken until target is reached
 
-def gridworld_search(grid, tau, greedy=False, maxiter=np.inf, wait_first_obs=True):
+def thompson_search(grid, tau, greedy=False, maxiter=np.inf, wait_first_obs=True):
     obs=0
     if wait_first_obs:
         while obs==0:
@@ -80,7 +47,7 @@ def gridworld_search(grid, tau, greedy=False, maxiter=np.inf, wait_first_obs=Tru
         while not reached_est_target and i < tau and not grid.done:
             if grid.render:
                 grid.show(t, obs)
-            action=grid.policy()
+            action=grid.chase()
             grid.advance(action)
             obs=grid.observe()
             grid.update_efficient(obs)
