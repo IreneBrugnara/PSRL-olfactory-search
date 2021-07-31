@@ -7,7 +7,6 @@ from time import time
 
 class Infotaxis(Gridworld):
     def __init__(self, nrows, ncols, source, init_state, render=True, pause=0, param=0.2):
-        print(render)
         super().__init__(nrows, ncols, source, init_state, render, pause, param)
         self.entropy=np.log(nrows*ncols)   # entropy of the current belief (initially a flat distribution)
         
@@ -25,7 +24,7 @@ class Infotaxis(Gridworld):
         # in new_state, or source is not found and an observation is made or not
         for i, new_state in enumerate(new_states):
             p = self.bernoulli_param_vectorial(new_state)
-            # p[new_state] = 0 ??????
+            # p[new_state] = 0 ? sì ma è automatico per come ho implementato la p
             mean_p = np.sum(self.belief * p)   # mean bernoulli parameter weighted with the current belief
             for y in [0,1]:  # loop over the possible outcomes
                 lkh = p if y==1 else 1-p   # likelihood
@@ -44,8 +43,6 @@ class Infotaxis(Gridworld):
             # expected entropy variation
         # pick the move that maximizes the expected reduction in entropy, randomly breaking ties
         i = np.random.choice(np.flatnonzero(np.isclose(delta_S,delta_S.min(),atol=1e-14)))   # delta_S==min(delta_S) is not correct because of numerical floating-point errors
-        if self.state==new_states[i]:
-            print("still")
         self.state = new_states[i]
         #best_states = [s for s in new_states if abs(delta_S[s]-min(delta_S.values()))<1e-14]    
         
@@ -59,13 +56,12 @@ class Infotaxis(Gridworld):
         if self.render:
             grid.show(t, actual_obs)
             
-        print(self.entropy)
-        
+        if i==0:
+            print(self.entropy)
         # non serve che faccio l'update() perchè basta riciclare il calcolo già fatto sui 5
         
         
     def mls_step(self, t):   # Most Likely State (sarebbe il greedy con tau=1)
-        print("I am in ", self.state)
         self.greedy()
         action=self.chase()
         self.advance(action)
@@ -83,6 +79,8 @@ def infotaxis_search(grid, threshold=0, maxiter=np.inf, wait_first_obs=True):
         while obs==0:
             obs=grid.observe()
         grid.update_efficient(obs)    # INDENT
+    else:
+        grid.first_update()
     t=0
     if grid.render:
          grid.show(t, 0)
@@ -100,12 +98,11 @@ def infotaxis_search(grid, threshold=0, maxiter=np.inf, wait_first_obs=True):
    
 nrows=201
 ncols=151
-myseed=int(time())#912
-np.random.seed(5242) 
+myseed=int(time())
+np.random.seed(1627193450) 
 print(myseed)
-#np.random.seed() 
 init_state = 185,75
 source = 60,115
-grid=Infotaxis(nrows, ncols, source, init_state, render=False, pause=0)
-print(infotaxis_search(grid, threshold=1.5, wait_first_obs=True))
+grid=Infotaxis(nrows, ncols, source, init_state, render=True, pause=0, param=0.3)
+print(infotaxis_search(grid, threshold=0, wait_first_obs=True, maxiter=7000))
 

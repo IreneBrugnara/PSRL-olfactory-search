@@ -32,10 +32,12 @@ class Thompson(Gridworld):
 
 def thompson_search(grid, tau, greedy=False, maxiter=np.inf, wait_first_obs=True):
     obs=0
-    if wait_first_obs:
+    if wait_first_obs:  # stay still until first observation
         while obs==0:
             obs=grid.observe()
         grid.update_efficient(obs)    # INDENT
+    else:
+        grid.first_update()
     t=0
     while not grid.done:
         if greedy:

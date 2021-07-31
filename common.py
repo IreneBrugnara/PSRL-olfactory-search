@@ -181,4 +181,9 @@ class Gridworld():
             return (action_r, 0)
         else:
             return (0, action_c)
-            
+          
+    # first_update: update for the initial belief, just put to zero the belief in the initial state
+    
+    def first_update(self):
+        self.belief[self.state] = 0
+        self.belief/=np.sum(self.belief)
