@@ -2,9 +2,10 @@ import pickle
 import matplotlib.pyplot as plt
 import numpy as np
 import sys
+from math import cosh
 
 # load data from pickle file
-path="Results/narrower_cone_source_shifted/"
+path="Results/prob0.8/"
 infile = open(path+"data.pickle",'rb')
 dimensions = pickle.load(infile)
 max_iter = pickle.load(infile)
@@ -22,7 +23,10 @@ infile.close()
 
 # process data
 n_trials = times_thompson.shape[1]
-init_distance = abs(init_state[0]-real_target[0]) + abs(init_state[1]-real_target[1])
+delta_y = init_state[1]-real_target[1]
+delta_x = init_state[0]-real_target[0]
+init_distance = abs(delta_y) + abs(delta_x)
+init_prob = 1/(cosh(delta_y/delta_x/param))**2
 
 # compute statistics
 
@@ -39,6 +43,7 @@ median_time_dualmode = np.median(times_dualmode)
 best_idx_tau_greedy = np.argmin(avg_times_greedy)
 best_idx_tau_thompson = np.argmin(avg_times_thompson)
 
+#print("outliers for infotaxis: ", np.count_nonzero(times_dualmode>500))
 
 # metadata
 if sys.argv[1]=="file":   # write output to files instead to stdout
@@ -54,6 +59,7 @@ print("max iter: ", max_iter)
 print("wait first obs? ", wait)
 print("entropy threshold: ", entr_threshold)
 print("parameter of observation model: ", param)
+print("initial probability of detection: ", init_prob)
 
 if sys.argv[1]=="file":
     f.close()
@@ -102,6 +108,8 @@ plt.hist(times_greedy[best_idx_tau_greedy], bins=bins, alpha=0.5, label='tau='+s
 plt.hist(times_greedy[-1], bins=bins, alpha=0.5, label='tau='+str(tau[-1]), density=False)
 plt.title("pdf of search time, greedy")
 plt.legend()
+plt.xlabel("time")
+plt.ylabel("counts")
 outliers_zero=np.count_nonzero(times_greedy[0]>cutoff)
 outliers_best=np.count_nonzero(times_greedy[best_idx_tau_greedy]>cutoff)
 plt.gcf().text(0.5,0.04,"outliers for tau="+str(tau[0])+": "+str(outliers_zero), ha='center')
@@ -120,6 +128,8 @@ plt.hist(times_greedy[best_idx_tau_greedy], bins=bins, alpha=0.5, label='tau='+s
 plt.hist(times_thompson[best_idx_tau_thompson], bins=bins, alpha=0.5, label='tau='+str(tau[best_idx_tau_thompson])+" thompson", density=False)
 plt.title("pdf of search time, greedy vs thompson with optimal tau")
 plt.legend()
+plt.xlabel("time")
+plt.ylabel("counts")
 outliers_greedy=np.count_nonzero(times_greedy[best_idx_tau_greedy]>cutoff)
 outliers_thompson=np.count_nonzero(times_thompson[best_idx_tau_thompson]>cutoff)
 plt.gcf().text(0.5,0.04,"outliers for greedy: "+str(outliers_greedy), ha='center')
@@ -140,10 +150,13 @@ plt.hist(times_dualmode, bins=bins, alpha=0.5, label='infotaxis with Dual Mode',
 plt.title("pdf of search time, Dual Mode")
 plt.gcf().text(0.5,0.01,"entropy threshold = "+str(entr_threshold), ha='center')
 plt.legend()
+plt.xlabel("time")
+plt.ylabel("counts")
 if sys.argv[1]=="file":
     plt.savefig(path+"pdf2.png")
 else:
     plt.show()
+
 
 
 plt.figure(figsize=(16, 9))
@@ -153,6 +166,10 @@ plt.hist(times_greedy[best_idx_tau_greedy], bins=bins, alpha=0.5, label='greedy'
 plt.hist(times_dualmode, bins=bins, alpha=0.5, label='infotaxis', density=False)
 plt.title("pdf of search time, infotaxis vs greedy with best tau")
 plt.legend()
+plt.xlabel("time")
+plt.ylabel("counts")
+#plt.gcf().text(0.5,0.04,"outliers for greedy: "+str(np.count_nonzero(times_greedy[best_idx_tau_greedy]>400)), ha='center')
+#plt.gcf().text(0.5,0.01,"outliers for infotaxis: "+str(np.count_nonzero(times_dualmode>400)), ha='center')
 if sys.argv[1]=="file":
     plt.savefig(path+"pdf3.png")
 else:
