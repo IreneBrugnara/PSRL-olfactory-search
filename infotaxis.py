@@ -6,12 +6,12 @@ from common import Gridworld
 from time import time
 
 class Infotaxis(Gridworld):
-    def __init__(self, nrows, ncols, source, init_state, render=True, pause=0, param=0.2):
-        super().__init__(nrows, ncols, source, init_state, render, pause, param)
+    def __init__(self, nrows, ncols, source, init_state, plot=True, pause=0, param=0.2):
+        super().__init__(nrows, ncols, source, init_state, plot, pause, param)
         self.entropy=np.log(nrows*ncols)   # entropy of the current belief (initially a flat distribution)
         
         
-    def infotaxis_step(self, t):
+    def infotaxis_step(self):
         # non ho vettorizzato il calcolo perchè ci sono solo 5 elementi da valutare (only steps of length 1)
         possible_actions = [(0,0), (0,1), (0,-1), (1,0), (-1,0)]  # set of candidate actions (still, right, left, down, up)
         new_states = list(map(self.move, possible_actions))
@@ -51,47 +51,42 @@ class Infotaxis(Gridworld):
         if not self.done:
             actual_obs = self.observe()
             self.belief = new_belief[i][actual_obs]
-            self.entropy = new_entropy[i][actual_obs]
-            
-        if self.render:
-            grid.show(t, actual_obs)
-            
-        if i==0:
-            print(self.entropy)
+            self.entropy = new_entropy[i][actual_obs]            
         # non serve che faccio l'update() perchè basta riciclare il calcolo già fatto sui 5
         
+        return actual_obs  # only for the plot
         
-    def mls_step(self, t):   # Most Likely State (sarebbe il greedy con tau=1)
+        
+    def mls_step(self):   # Most Likely State (sarebbe il greedy con tau=1)
         self.greedy()
         action=self.chase()
         self.advance(action)
         obs=self.observe()
         self.update_efficient(obs)
-        if self.render:
-            self.show(t, obs)
+        return obs  # only for the plot
 
 
 #gridworld_search: simulates Infotaxis and returns the number of steps t taken until target is reached; with threshold>0 implements Dual Mode control (under entropy threshold, the greedy action is taken)
 
 def infotaxis_search(grid, threshold=0, maxiter=np.inf, wait_first_obs=True):
+    obs=0
     if wait_first_obs:
-        obs=0
         while obs==0:
             obs=grid.observe()
         grid.update_efficient(obs)    # INDENT
     else:
         grid.first_update()
     t=0
-    if grid.render:
-         grid.show(t, 0)
+    if grid.plot:
+         grid.show(t, obs)
     while not grid.done and t<=maxiter:
         t+=1    # andrebbe incrementato dopo lo step, ma è per il plot
         if grid.entropy>=threshold:
-            grid.infotaxis_step(t)
+            obs=grid.infotaxis_step()
         else:
-            grid.mls_step(t)
-        if t>=maxiter:
-            return t
+            obs=grid.mls_step()
+        if grid.plot:
+            grid.show(t, obs)
     return t
     
     
@@ -99,10 +94,10 @@ def infotaxis_search(grid, threshold=0, maxiter=np.inf, wait_first_obs=True):
 nrows=201
 ncols=151
 myseed=int(time())
-np.random.seed(1627193450) 
+np.random.seed(1627811999) 
 print(myseed)
 init_state = 185,75
 source = 60,115
-grid=Infotaxis(nrows, ncols, source, init_state, render=True, pause=0, param=0.3)
-print(infotaxis_search(grid, threshold=0, wait_first_obs=True, maxiter=7000))
+grid=Infotaxis(nrows, ncols, source, init_state, plot=True, pause=0, param=0.2)
+print(infotaxis_search(grid, threshold=2, wait_first_obs=True, maxiter=7000))
 

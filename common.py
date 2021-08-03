@@ -1,54 +1,25 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from itertools import product
 from math import cosh
-
+from render import Render
 
 class Gridworld():
-    def __init__(self, nrows, ncols, source, init_state, render=True, pause=0, param=0.2):
+    def __init__(self, nrows, ncols, source, init_state, plot=True, pause=0, param=0.2):
         self.dimensions=(nrows,ncols)    # dimensions of the grid
         self.state=init_state    # current state
         self.belief=np.ones(self.dimensions)/(nrows*ncols)    # uniform prior
         self.param=param    # parameter v/U in the observation model
         self.done=(source==init_state)    # flag set to true when real target is reached (reward=1)
         self.source=source    # real target position
-        self.render=render    # if true, a graphical representation of the gridworld is printed
-        self.pause=pause    # time interval between animation frames
+        self.plot=plot   # if true, a graphical representation of the gridworld is printed
+        self.estimated_target=(None,None)     # current estimate of target position
 
-        if self.render:
-          self.fig = plt.figure(figsize=(16, 10))
-          self.ax = self.fig.add_subplot(111)
-          self.im = self.ax.imshow(self.belief, cmap='Greens')
-          self.scat_source = self.ax.scatter(self.source[1], self.source[0], color='r', marker='*', label="real target", s=150)
-          self.scat_me = self.ax.scatter(self.state[1], self.state[0], color='y', marker='o', s=5, zorder=0.1, label="visited positions")
-          self.scat_mel = self.ax.scatter(self.state[1], self.state[0], color='orange', marker='o', label="current position", zorder=1, s=100)
-          self.scat_obs = self.ax.scatter(None, None, color='purple', marker='o', label="observations", s=5, zorder=0.2)
-          self.fig.colorbar(self.im, ax=self.ax, ticks=None)
-          self.text = self.fig.text(0.4, 0.6, "")
-          plt.show(block=False)
-
-    def update_plots(self, t, obs):
-        self.im.autoscale()
-        self.im.set_array(self.belief)
-        self.scat_me.set_offsets(np.vstack([self.scat_me.get_offsets(), np.array([self.state[1],self.state[0]])]))
-        self.scat_mel.set_offsets([self.state[1], self.state[0]])
-        if obs:
-            self.scat_obs.set_offsets(np.vstack([self.scat_obs.get_offsets(), np.array([self.state[1],self.state[0]])]))
-            
-        self.ax.set_title("t="+str(t))
-        if t==0:
-            self.ax.legend(bbox_to_anchor=(-0.2, 0.5))
-        self.text.set_text("y=1" if obs else "")
-    
-    
-    #show: display a graphical representation of the grid
+        if plot:
+            self.render = Render(pause, self.belief, source, init_state, self.estimated_target)
 
     def show(self, t, obs):
-        self.update_plots(t, obs)        
-        self.fig.canvas.draw()
-        if self.pause!=0:     # pause=0 is the fastest animation
-            plt.pause(self.pause)
-        
+        self.render.show(t, obs, self.belief, self.state, self.estimated_target)
+    
     #field: display the model of observations
         
     def field(self):
@@ -56,9 +27,7 @@ class Gridworld():
         nrows, ncols=self.dimensions
         for pos in product(range(nrows), range(ncols)):    # loop over each state in the grid
             field[pos] = self.bernoulli_param(pos, self.source)
-        plt.imshow(field)
-        plt.colorbar()
-        plt.show()
+        self.render.field(field, self.state, self.source)
         
 
     #update: posterior calculation given an observation
@@ -101,7 +70,7 @@ class Gridworld():
 
     
     def bernoulli_param_vectorial(self, state):
-        nrows, ncols=self.dimensions
+        nrows, ncols=self.dimensions    # oppure: belief.shape
         x = np.tile(np.arange(state[0]).reshape(state[0],1), (1,ncols))
         y = np.tile(np.arange(ncols), (state[0],1))
         x = state[0] - x
@@ -170,7 +139,7 @@ class Gridworld():
 
     #chase: pick action to get one step closer to the current estimate of the target
 
-    def chase(self):   # oppure potrei chiamarlo chase()
+    def chase(self):
         var_r=self.estimated_target[0]-self.state[0]
         var_c=self.estimated_target[1]-self.state[1]
         action_r=np.sign(var_r) # direction of movement along horizontal axis
