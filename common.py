@@ -29,23 +29,8 @@ class Gridworld():
             field[pos] = self.bernoulli_param(pos, self.source)
         self.render.field(field, self.state, self.source)
         
-
-    #update: posterior calculation given an observation
-
-    def update(self, observation):
-        nrows, ncols=self.dimensions
-        likelihood_matrix=np.empty_like(self.belief)
-        '''
-        for i in range(nrows):
-            for j in range(ncols):
-                likelihood_matrix[i,j]=self.likelihood(observation, (i,j))
-        '''
-        for pos in product(range(nrows), range(ncols)):    # loop over each state in the grid
-            likelihood_matrix[pos]=self.likelihood(observation, pos)    # compute likelihood
-        self.belief=np.multiply(self.belief, likelihood_matrix)
-        self.belief/=np.sum(self.belief)     # normalize posterior
         
-    #update_efficient: much faster (but less readable) version of update(), that vectorizes the computation of the likelihood with Numpy
+    #update_efficient: posterior calculation given an observation, that vectorizes the computation of the likelihood with Numpy
     
     def update_efficient(self, observation):
         self.belief = self.belief * self.likelihood_vectorial(observation, self.state)
@@ -82,14 +67,8 @@ class Gridworld():
         prob[:state[0]] = prob_nonzero
         return prob
         
-    #likelihood: compute the likelihood of a given observation y assuming that the target is est_target
 
-    def likelihood(self, y, est_target):
-        p=self.bernoulli_param(self.state, est_target)
-        if self.state==est_target:     # this is because the source is a terminal state, so 
-            return 0                   # the state just visited was not certainly the source regardless of y
-        return p if y==1 else 1-p
-
+    # likelihood_vectorial: compute the likelihood of a given observation y assuming that the target is est_target
     # likelihood of observing "obs" if I am in state "state", vectorial in the source position
     def likelihood_vectorial(self, obs, state):
         p = self.bernoulli_param_vectorial(state)
