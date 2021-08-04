@@ -9,15 +9,15 @@ from functools import partial
 nrows=201
 ncols=151
 dimensions=(nrows,ncols)
-n_trials=1000
-max_iter=1000
+n_trials=3000
+max_iter=2000
 init_state = 185,75
-real_target = 60,115
+real_target = 60,95
 wait=True
 entr_threshold=1.5
 obs_param=0.2
 
-tau=np.concatenate((np.array([1]), np.arange(5,71,5)))  # list(range()) e poi append
+tau=np.concatenate((np.array([1]), np.arange(5,61,5)))  # list(range()) e poi append
 n_tau=len(tau)
 
 nproc=32
@@ -28,16 +28,19 @@ nproc=32
 if nproc==1: # serial version
     times_thompson=np.zeros((n_tau,n_trials)) #number of steps taken by Thompson algorithm
     times_greedy=np.zeros((n_tau,n_trials)) #number of steps taken by greedy algorithm
-    times_infotaxis=np.zeros((n_tau,n_trials))
-    
+    times_infotaxis=np.zeros(n_trials)
+    times_dualmode=np.zeros(n_trials)
+
     for j in range(n_trials):
         for k in range(n_tau):
             grid=Thompson(nrows, ncols, real_target, init_state, render=False, param=obs_param)
             times_thompson[k,j]=thompson_search(grid, tau[k], greedy=False, maxiter=max_iter, wait_first_obs=wait)
             grid=Thompson(nrows, ncols, real_target, init_state, render=False, param=obs_param)
             times_greedy[k,j]=thompson_search(grid, tau[k], greedy=True, maxiter=max_iter, wait_first_obs=wait)
-        times_infotaxis[k,j]=infotaxis_search(grid, maxiter=max_iter, wait_first_obs=wait)
-        times_dualmode[k,j]=infotaxis_search(grid, threshold=threshold, maxiter=max_iter, wait_first_obs=wait)
+        
+
+        times_infotaxis[j]=infotaxis_search(grid, maxiter=max_iter, wait_first_obs=wait)
+        times_dualmode[j]=infotaxis_search(grid, threshold=threshold, maxiter=max_iter, wait_first_obs=wait)
 
 else: # parallel version
     def f(t, j, greedy):  # run one simulation of thompson/greedy with tau=t
