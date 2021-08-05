@@ -15,7 +15,7 @@ class Gridworld():
         self.estimated_target=(None,None)     # current estimate of target position
         self.entropy=np.log(nrows*ncols)   # entropy of the current belief (initially a flat distribution)
 
-        if plot:
+        if plot:  # display a real-time animation
             self.render = Render(pause, self.belief, source, init_state, self.estimated_target)
 
     def show(self, t, obs):
@@ -192,7 +192,11 @@ class Gridworld():
         
     def mls_step(self):   # Most Likely State (sarebbe il greedy con tau=1)
         self.greedy()
-        action=self.chase()
+        actions=self.chase()
+        if len(actions)==1:
+            action = actions[0]
+        else:
+            action = actions[0] if np.random.uniform()>0.5 else actions[1]
         self.advance(action)
         obs=self.observe()
         self.update_efficient(obs)
