@@ -16,10 +16,13 @@ class Gridworld():
         self.entropy=np.log(nrows*ncols)   # entropy of the current belief (initially a flat distribution)
 
         if plot:  # display a real-time animation
-            self.render = Render(pause, self.belief, source, init_state, self.estimated_target)
+            self.render = self.construct_render(pause)  # factory?
+            
+    def construct_render(self, pause):
+        return Render(pause, self.belief, self.source, self.init_state)
 
     def show(self, t, obs):
-        self.render.show(t, obs, self.belief, self.state, self.estimated_target)
+        self.render.show(t, obs, self.belief, self.state)
     
     #field: display the model of observations
         

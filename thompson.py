@@ -1,7 +1,33 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from render import Render
+from gridworld import Gridworld
 
+class RenderWithEstTarget(Render):
+    def __init__(self, pause, belief, source, state):
+        super().__init__(pause, belief, source, state)
+        self.scat_target = self.ax.scatter(None, None, color='b', marker='x', label="estimated target", s=150)
+        self.ax.legend(loc=(-0.45,0.5))
 
+    def update_plots(self, t, obs, belief, state, estimated_target):
+        super().update_plots(t, obs, belief, state)
+        self.scat_target.set_offsets([estimated_target[1], estimated_target[0]])
+        
+    def show(self, t, obs, belief, state, estimated_target):
+        self.update_plots(t, obs, belief, state, estimated_target)
+        self.redraw()    
+
+class Thompson(Gridworld):
+    def __init__(self, nrows, ncols, source, init_state, plot=True, pause=0, param=0.2):
+        super().__init__(nrows, ncols, source, init_state, plot, pause, param)
+        
+    def show(self, t, obs):
+        self.render.show(t, obs, self.belief, self.state, self.estimated_target)
+        
+    def construct_render(self, pause):
+        return RenderWithEstTarget(pause, self.belief, self.source, self.state)
+        
+        
 
 #gridworld_search: simulates Thompson or greedy algorithm and returns the number of steps t taken until target is reached
 

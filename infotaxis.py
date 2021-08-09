@@ -1,17 +1,19 @@
+from gridworld import Gridworld
 import numpy as np
-import matplotlib.pyplot as plt
+from render_entropy import RenderEntropy
 
-
-def display_entropy(grid, entropy, threshold):
-    grid.ax2 = plt.gcf().add_subplot(1,2,2)
-    grid.entropy_level = grid.ax2.bar(0, entropy, width=0.1, color='pink', label='entropy')
-    plt.ylim([0,entropy])
-    #plt.hlines(y=threshold)#, xmin=tau[i][0], xmax=tau[i][-1], label="infotaxis", color='y', linestyle='--')
-    grid.ax2.axhline(threshold, label='threshold')
-    plt.legend()
-    
-def update_entropy_plot(grid, entropy):
-    grid.entropy_level[0].set_height(entropy)
+class Infotaxis(Gridworld):
+    def __init__(self, nrows, ncols, source, init_state, plot=True, pause=0, param=0.2):
+        super().__init__(nrows, ncols, source, init_state, plot, pause, param)
+        
+    def construct_render(self, pause):
+        return RenderEntropy(pause, self.belief, self.source, self.state, self.entropy)
+        
+    def show(self, t, obs):
+        self.render.show(t, obs, self.belief, self.state, self.entropy)
+        
+    def show_threshold(self, threshold):
+        self.render.show_threshold(threshold)
 
 
 #infotaxis_search: simulates Infotaxis and returns the number of steps t taken until target is reached; with threshold>0 implements Dual Mode control (under entropy threshold, the greedy action is taken)
@@ -26,8 +28,8 @@ def infotaxis_search(grid, threshold=0, maxiter=np.inf, wait_first_obs=True):
         grid.first_update()
     t=0
     if grid.plot:
-         grid.show(t, obs)
-         display_entropy(grid, grid.entropy, threshold)
+        grid.show_threshold(threshold)
+        grid.show(t, obs)
     possible_actions = [(0,0), (0,1), (0,-1), (1,0), (-1,0)]  # set of candidate actions (still, right, left, down, up)
     while not grid.done and t<=maxiter:
         t+=1    # andrebbe incrementato dopo lo step, ma è per il plot
@@ -38,7 +40,6 @@ def infotaxis_search(grid, threshold=0, maxiter=np.inf, wait_first_obs=True):
             grid.update_entropy()   # only for the plot
         if grid.plot:
             grid.show(t, obs)
-            update_entropy_plot(grid, grid.entropy)
     return t
     
     

@@ -1,14 +1,17 @@
 import numpy as np
 from gridworld import Gridworld
 import time
-from qmdp_votes import QmdpVotes
+from render_votes import RenderVotes
 
 class Qmdp(Gridworld):
     def __init__(self, nrows, ncols, source, init_state, plot=True, pause=0, param=0.2):
         super().__init__(nrows, ncols, source, init_state, plot, pause, param)
         self.votes = np.zeros(5)   # votes[i] is the weight of possible_actions[i]
-        self.actions = ["still", "right", "left", "down", "up"]
-        self.bars = QmdpVotes(self.votes, self.actions)
+        #self.actions = ["still", "right", "left", "down", "up"]
+        #self.bars = QmdpVotes(self.votes, self.actions)
+        
+    def construct_render(self, pause):
+        return RenderVotes(pause, self.belief, self.source, self.state)
 
     def qmdp_step(self, gamma=0.9):
         possible_actions = [(0,0), (0,1), (0,-1), (1,0), (-1,0)]
@@ -41,7 +44,8 @@ class Qmdp(Gridworld):
         return chosen_action, i
         
         
-        
+    def show(self, t, obs, chosen):
+        self.render.show(t, obs, self.belief, self.state, self.votes, chosen)
 
 def qmdp_search(grid, maxiter=np.inf, wait_first_obs=True, gamma=0.9):
     obs=0
@@ -53,8 +57,7 @@ def qmdp_search(grid, maxiter=np.inf, wait_first_obs=True, gamma=0.9):
         grid.first_update()
     t=0
     if grid.plot:
-         grid.show(t, obs)
-         #grid.bars.update(grid.votes)
+         grid.show(t, obs, 0)
     while not grid.done and t<=maxiter:
         t+=1
         action,i = grid.qmdp_step(gamma)
@@ -62,8 +65,7 @@ def qmdp_search(grid, maxiter=np.inf, wait_first_obs=True, gamma=0.9):
         obs = grid.observe()
         grid.update_efficient(obs)
         if grid.plot:
-            grid.show(t, obs)
-            grid.bars.update(grid.votes, i)
+            grid.show(t, obs, i)
     return t
 
 

@@ -7,8 +7,9 @@ class ActionVoting(Gridworld):
     def __init__(self, nrows, ncols, source, init_state, plot=True, pause=0, param=0.2):
         super().__init__(nrows, ncols, source, init_state, plot, pause, param)
         self.votes = np.zeros(5)   # votes[i] is the probability that possible_actions[i] is optimal
-        self.actions = ["still", "right", "left", "down", "up"]
-        self.bars = RenderVotes(self.votes, self.actions)
+
+    def construct_render(self, pause):
+        return RenderVotes(pause, self.belief, self.source, self.state)
 
     def actionvoting_step(self, p=0.5):
         possible_actions = [(0,0), (0,1), (0,-1), (1,0), (-1,0)]  # set of candidate actions (right, left, down, up)
@@ -47,7 +48,8 @@ class ActionVoting(Gridworld):
         return chosen_action, i   # la "i" serve solo al render, dovrei piuttosto fare un mapping (un dizionario o un array) fra le azioni e gli indici oppure con delle stringhe....
         
     
-    
+    def show(self, t, obs, chosen):
+        self.render.show(t, obs, self.belief, self.state, self.votes, chosen)
 
 def actionvoting_search(grid, maxiter=np.inf, wait_first_obs=True, prob=0.5):
     obs=0
@@ -59,8 +61,7 @@ def actionvoting_search(grid, maxiter=np.inf, wait_first_obs=True, prob=0.5):
         grid.first_update()
     t=0
     if grid.plot:
-         grid.show(t, obs)
-         #grid.bars.update(grid.votes)
+         grid.show(t, obs, 0)
     while not grid.done and t<=maxiter:
         t+=1
         action,i = grid.actionvoting_step(prob)
@@ -68,8 +69,7 @@ def actionvoting_search(grid, maxiter=np.inf, wait_first_obs=True, prob=0.5):
         obs = grid.observe()
         grid.update_efficient(obs)
         if grid.plot:
-            grid.show(t, obs)
-            grid.bars.update(grid.votes, i)
+            grid.show(t, obs, i)
     return t
 
 
@@ -80,6 +80,6 @@ np.random.seed(34455555)
 print(myseed)
 init_state = 185,75
 real_target = 60,115
-grid=ActionVoting(nrows, ncols, real_target, init_state, plot=True, pause=2, param=0.2)
+grid=ActionVoting(nrows, ncols, real_target, init_state, plot=True, pause=0, param=0.2)
 print(actionvoting_search(grid, wait_first_obs=False, prob=0.7))
 
