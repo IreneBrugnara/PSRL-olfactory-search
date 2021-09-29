@@ -5,8 +5,8 @@ import sys
 from math import cosh
 
 # load data from pickle file
-path="Results/prob0.8/"
-infile = open(path+"data.pickle",'rb')
+path="Results_1/"#"Results_1_bis/"
+infile = open(path+"data_1.pickle",'rb')
 dimensions = pickle.load(infile)
 max_iter = pickle.load(infile)
 init_state = pickle.load(infile)
